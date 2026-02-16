@@ -1,0 +1,27 @@
+:root {
+  /* Colors */
+  --primary: #B76E79;
+  --primary-hover: #a05a65;
+  --dark: #2C2C2C;
+  --light: #F8F5F2;
+  --white: #FFFFFF;
+  --gray: #6B6B6B;
+  --border: #ddd;
+  --success: #4CAF50;
+  --danger: #E53935;
+
+  /* Typography */
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Poppins', sans-serif;
+
+  /* Spacing */
+  --spacing-page: 40px;
+  --spacing-section: 30px;
+  --spacing-card: 20px;
+  --gap-grid: 24px;
+
+  /* Radius */
+  --radius-btn: 6px;
+  --radius-card: 12px;
+  --radius-badge: 20px;
+}
