@@ -1,83 +1,122 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { LayoutDashboard, ShoppingBag, Package, Home, LogOut } from "lucide-react";
 
 const Sidebar = () => {
     const navigate = useNavigate();
+    const location = useLocation();
 
     const handleLogout = () => {
         localStorage.removeItem("admin");
         navigate("/admin/login");
     };
 
-    return (
-        <div style={styles.sidebar}>
-            <h3 style={styles.heading}>Admin Panel</h3>
+    const isActive = (path) => location.pathname === path;
 
-            <div style={styles.menu}>
-                <div style={styles.menuItem} onClick={() => navigate("/admin/dashboard")}>
-                    Dashboard
-                </div>
-                <div style={styles.menuItem} onClick={() => navigate("/admin/orders")}>
-                    Orders
-                </div>
-                <div style={styles.menuItem} onClick={() => navigate("/admin/products")}>
-                    Manage Products
-                </div>
-                <div style={styles.menuItem} onClick={() => navigate("/admin/home")}>
-                    Home Settings
-                </div>
+    const menuItems = [
+        { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { path: "/admin/orders", label: "Orders", icon: ShoppingBag },
+        { path: "/admin/products", label: "Products", icon: Package },
+        { path: "/admin/home", label: "Home Settings", icon: Home },
+    ];
+
+    return (
+        <aside style={styles.sidebar}>
+            <div style={styles.header}>
+                <h3 style={styles.brand}>Prima Admin</h3>
             </div>
 
-            <div style={styles.bottom}>
+            <nav style={styles.menu}>
+                {menuItems.map((item) => {
+                    const active = isActive(item.path);
+                    const Icon = item.icon;
+                    return (
+                        <div
+                            key={item.path}
+                            onClick={() => navigate(item.path)}
+                            style={{
+                                ...styles.menuItem,
+                                backgroundColor: active ? "rgba(183, 110, 121, 0.15)" : "transparent",
+                                color: active ? "var(--primary)" : "#888",
+                                borderRight: active ? "3px solid var(--primary)" : "3px solid transparent",
+                            }}
+                        >
+                            <Icon size={20} />
+                            <span>{item.label}</span>
+                        </div>
+                    );
+                })}
+            </nav>
+
+            <div style={styles.footer}>
                 <button onClick={handleLogout} style={styles.logoutBtn}>
-                    Logout
+                    <LogOut size={18} />
+                    <span>Logout</span>
                 </button>
             </div>
-        </div>
+        </aside>
     );
 };
 
 const styles = {
     sidebar: {
-        width: "250px",
+        width: "260px",
         height: "100vh",
-        backgroundColor: "#2C2C2C",
-        color: "#fff",
+        backgroundColor: "#fff",
+        borderRight: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
-        padding: "20px",
         position: "fixed",
         left: 0,
-        top: 0
+        top: 0,
+        zIndex: 1000,
+        boxShadow: "2px 0 10px rgba(0,0,0,0.03)"
     },
-    heading: {
-        marginBottom: "40px",
-        textAlign: "center",
-        color: "#B76E79"
+    header: {
+        padding: "30px 24px",
+        borderBottom: "1px solid var(--border)"
+    },
+    brand: {
+        fontFamily: "var(--font-heading)",
+        color: "var(--primary)",
+        fontSize: "1.5rem",
+        margin: 0
     },
     menu: {
         flex: 1,
+        padding: "20px 0",
         display: "flex",
         flexDirection: "column",
-        gap: "10px"
+        gap: "4px"
     },
     menuItem: {
-        padding: "10px 15px",
+        padding: "12px 24px",
         cursor: "pointer",
-        borderRadius: "5px",
-        transition: "background 0.3s",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        fontWeight: 500,
+        transition: "all 0.2s ease",
+        fontSize: "0.95rem"
     },
-    bottom: {
-        marginTop: "auto"
+    footer: {
+        padding: "20px 24px",
+        borderTop: "1px solid var(--border)"
     },
     logoutBtn: {
         width: "100%",
-        padding: "10px",
-        backgroundColor: "#E53935",
-        color: "white",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px",
+        padding: "12px",
+        backgroundColor: "#DC35450D",
+        color: "#DC3545",
         border: "none",
-        borderRadius: "5px",
-        cursor: "pointer"
+        borderRadius: "8px",
+        cursor: "pointer",
+        fontWeight: 500,
+        transition: "background 0.2s"
     }
 };
 

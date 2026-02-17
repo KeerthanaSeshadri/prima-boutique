@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { Plus, Trash2, Image as ImageIcon, Upload } from "lucide-react";
+import Swal from "sweetalert2";
+import Loader from "../../components/common/Loader";
 
 const ManageProducts = () => {
     const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [form, setForm] = useState({
         name: "",
         price: "",
@@ -25,11 +29,14 @@ const ManageProducts = () => {
     ];
 
     const fetchProducts = async () => {
+        setLoading(true);
         try {
             const res = await axios.get("http://localhost:4000/api/products");
             setProducts(res.data);
         } catch (error) {
             console.log("Error fetching products:", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -45,7 +52,12 @@ const ManageProducts = () => {
         e.preventDefault();
         try {
             await axios.post("http://localhost:4000/api/products/add", form);
-            alert("Product Added Successfully");
+            Swal.fire({
+                icon: "success",
+                title: "Success",
+                text: "Product Added Successfully",
+                confirmButtonColor: "#B76E79"
+            });
             setForm({
                 name: "",
                 price: "",
@@ -56,197 +68,319 @@ const ManageProducts = () => {
             });
             fetchProducts();
         } catch (error) {
-            alert("Error adding product");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Error adding product",
+                confirmButtonColor: "#B76E79"
+            });
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this product?")) {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#B76E79',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        });
+
+        if (result.isConfirmed) {
             try {
                 await axios.delete(`http://localhost:4000/api/products/${id}`);
                 fetchProducts();
+                Swal.fire(
+                    'Deleted!',
+                    'Product has been deleted.',
+                    'success'
+                );
             } catch (error) {
-                alert("Error deleting product");
+                Swal.fire(
+                    'Error!',
+                    'Error deleting product',
+                    'error'
+                );
             }
         }
     };
 
     return (
-        <div style={styles.container}>
-            <h2>Manage Products</h2>
+        <div className="manage-products animate-fade-in">
+            <h2 className="page-title mb-lg">Manage Products</h2>
 
-            {/* Add Product Form */}
-            <div style={styles.formContainer}>
-                <h3>Add New Product</h3>
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    <input
-                        style={styles.input}
-                        type="text"
-                        name="name"
-                        placeholder="Product Name"
-                        value={form.name}
-                        onChange={handleChange}
-                        required
-                    />
-                    <input
-                        style={styles.input}
-                        type="text"
-                        name="image"
-                        placeholder="Image URL"
-                        value={form.image}
-                        onChange={handleChange}
-                        required
-                    />
-                    <textarea
-                        style={styles.textarea}
-                        name="description"
-                        placeholder="Description"
-                        value={form.description}
-                        onChange={handleChange}
-                        required
-                    />
-                    <div style={styles.row}>
-                        <input
-                            style={styles.input}
-                            type="number"
-                            name="price"
-                            placeholder="Price"
-                            value={form.price}
-                            onChange={handleChange}
-                            required
-                        />
-                        <input
-                            style={styles.input}
-                            type="number"
-                            name="stock"
-                            placeholder="Stock"
-                            value={form.stock}
-                            onChange={handleChange}
-                            required
-                        />
+            <div className="content-grid">
+                {/* Add Product Form */}
+                <div className="form-card">
+                    <div className="card-header border-bottom mb-md pb-sm">
+                        <h3>Add New Product</h3>
                     </div>
-                    <select
-                        style={styles.input}
-                        name="category"
-                        value={form.category}
-                        onChange={handleChange}
-                    >
-                        {categories.map((cat) => (
-                            <option key={cat} value={cat}>
-                                {cat}
-                            </option>
-                        ))}
-                    </select>
-                    <button type="submit" style={styles.button}>
-                        Add Product
-                    </button>
-                </form>
-            </div>
 
-            {/* Product List */}
-            <div style={styles.listContainer}>
-                <h3>Existing Products</h3>
-                <div style={styles.grid}>
-                    {products.map((product) => (
-                        <div key={product._id} style={styles.card}>
-                            <img
-                                src={product.image}
-                                alt={product.name}
-                                style={styles.image}
+                    <form onSubmit={handleSubmit} className="product-form">
+                        <div className="form-group">
+                            <label className="form-label">Product Name</label>
+                            <input
+                                className="form-input"
+                                type="text"
+                                name="name"
+                                placeholder="Enter product name"
+                                value={form.name}
+                                onChange={handleChange}
+                                required
                             />
-                            <h4>{product.name}</h4>
-                            <p>₹{product.price}</p>
-                            <p>Stock: {product.stock}</p>
-                            <button
-                                onClick={() => handleDelete(product._id)}
-                                style={styles.deleteBtn}
-                            >
-                                Delete
-                            </button>
                         </div>
-                    ))}
+
+                        <div className="form-group">
+                            <label className="form-label">Image Filename</label>
+                            <div className="input-with-icon">
+                                <ImageIcon className="icon" size={18} />
+                                <input
+                                    className="form-input indent"
+                                    type="text"
+                                    name="image"
+                                    placeholder="e.g. necklace.jpg"
+                                    value={form.image}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+                            <small className="text-muted">Ensure image is in uploads folder</small>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Description</label>
+                            <textarea
+                                className="form-input"
+                                name="description"
+                                placeholder="Detailed description..."
+                                value={form.description}
+                                onChange={handleChange}
+                                required
+                                rows="3"
+                            />
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Price</label>
+                                <input
+                                    className="form-input"
+                                    type="number"
+                                    name="price"
+                                    placeholder="₹0.00"
+                                    value={form.price}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Stock</label>
+                                <input
+                                    className="form-input"
+                                    type="number"
+                                    name="stock"
+                                    placeholder="Quantity"
+                                    value={form.stock}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Category</label>
+                            <select
+                                className="form-input"
+                                name="category"
+                                value={form.category}
+                                onChange={handleChange}
+                            >
+                                {categories.map((cat) => (
+                                    <option key={cat} value={cat}>
+                                        {cat}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <button type="submit" className="btn btn-primary full-width mt-md">
+                            <Plus size={18} />
+                            <span>Add Product</span>
+                        </button>
+                    </form>
+                </div>
+
+                {/* Product List */}
+                <div className="list-container">
+                    <h3 className="section-title mb-md">Product Inventory</h3>
+                    <div className="product-list-grid">
+                        {loading ? (
+                            <div className="flex-center col-span-full" style={{ padding: "40px" }}>
+                                <Loader text="Loading inventory..." />
+                            </div>
+                        ) : (
+                            products.map((product) => (
+                                <div key={product._id} className="admin-product-card">
+                                    <div className="img-wrapper">
+                                        <img
+                                            src={`http://localhost:4000/uploads/${product.image}`}
+                                            alt={product.name}
+                                            onError={(e) => e.target.src = 'https://via.placeholder.com/150'}
+                                        />
+                                    </div>
+                                    <div className="info">
+                                        <h4>{product.name}</h4>
+                                        <div className="meta flex-between">
+                                            <span>₹{product.price}</span>
+                                            <span className={product.stock < 5 ? 'text-danger' : 'text-success'}>
+                                                Stock: {product.stock}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleDelete(product._id)}
+                                            className="btn-trash"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
+
+            <style jsx>{`
+        .manage-products {
+            padding-bottom: 50px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-card {
+            background: white;
+            padding: 25px;
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-sm);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .input-with-icon {
+            position: relative;
+        }
+
+        .icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .form-input.indent {
+            padding-left: 35px;
+        }
+
+        .product-list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .admin-product-card {
+            background: white;
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .admin-product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .img-wrapper {
+            height: 140px;
+            background: var(--bg-muted);
+        }
+
+        .img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .info {
+            padding: 15px;
+        }
+
+        .info h4 {
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+
+        .btn-trash {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--danger);
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .admin-product-card:hover .btn-trash {
+            opacity: 1;
+        }
+
+        .btn-trash:hover {
+            background: var(--danger);
+            color: white;
+        }
+      `}</style>
         </div>
     );
-};
-
-const styles = {
-    container: {
-        padding: "20px",
-    },
-    formContainer: {
-        backgroundColor: "#fff",
-        padding: "20px",
-        borderRadius: "8px",
-        boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-        marginBottom: "30px",
-        maxWidth: "600px"
-    },
-    form: {
-        display: "flex",
-        flexDirection: "column",
-        gap: "15px",
-        marginTop: "15px"
-    },
-    input: {
-        padding: "10px",
-        border: "1px solid #ddd",
-        borderRadius: "5px",
-        fontSize: "16px"
-    },
-    textarea: {
-        padding: "10px",
-        border: "1px solid #ddd",
-        borderRadius: "5px",
-        fontSize: "16px",
-        minHeight: "80px"
-    },
-    row: {
-        display: "flex",
-        gap: "15px"
-    },
-    button: {
-        padding: "10px",
-        backgroundColor: "#B76E79",
-        color: "white",
-        border: "none",
-        borderRadius: "5px",
-        cursor: "pointer",
-        fontSize: "16px"
-    },
-    listContainer: {
-        marginTop: "20px"
-    },
-    grid: {
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-        gap: "20px",
-        marginTop: "15px"
-    },
-    card: {
-        backgroundColor: "#fff",
-        padding: "15px",
-        borderRadius: "8px",
-        boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-        textAlign: "center"
-    },
-    image: {
-        width: "100%",
-        height: "150px",
-        objectFit: "cover",
-        borderRadius: "5px",
-        marginBottom: "10px"
-    },
-    deleteBtn: {
-        marginTop: "10px",
-        padding: "5px 10px",
-        backgroundColor: "#e53935",
-        color: "white",
-        border: "none",
-        borderRadius: "3px",
-        cursor: "pointer"
-    }
 };
 
 export default ManageProducts;

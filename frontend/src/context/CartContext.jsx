@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from "react";
+import Swal from "sweetalert2";
 
 export const CartContext = createContext();
 
@@ -35,7 +36,12 @@ const CartProvider = ({ children }) => {
           )
         );
       } else {
-        alert("Cannot add more than available stock");
+        Swal.fire({
+          icon: "warning",
+          title: "Stock Limit Reached",
+          text: "Cannot add more than available stock",
+          confirmButtonColor: "#B76E79",
+        });
       }
     } else {
       setCart([...cart, { ...product, quantity: 1 }]);

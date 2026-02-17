@@ -4,9 +4,9 @@ import Sidebar from "../components/admin/Sidebar";
 
 const AdminLayout = () => {
     return (
-        <div style={{ display: "flex" }}>
+        <div className="admin-layout" style={{ display: "flex", backgroundColor: "#f4f6f8", minHeight: "100vh" }}>
             <Sidebar />
-            <div style={{ flex: 1, marginLeft: "250px" }}>
+            <div className="admin-content" style={{ flex: 1, marginLeft: "260px", padding: "30px", overflowY: "auto" }}>
                 <Outlet />
             </div>
         </div>

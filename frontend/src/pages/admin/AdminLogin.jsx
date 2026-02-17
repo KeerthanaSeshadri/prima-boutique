@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { ShieldCheck, Mail, Lock } from "lucide-react";
+import Swal from "sweetalert2";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -19,51 +22,81 @@ const AdminLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    console.log("Admin Login Attempt:", formData);
+    setLoading(true);
 
     try {
       const response = await axios.post(
         "http://localhost:4000/api/auth/admin-login",
         formData
       );
-
-      console.log("Admin Login Success:", response.data);
-
       localStorage.setItem("admin", JSON.stringify(response.data));
-
       navigate("/admin/dashboard");
-
-
     } catch (error) {
-      console.log("Admin Login Error:", error.response?.data);
-      alert("Invalid Admin Credentials");
+      Swal.fire({
+        icon: "error",
+        title: "Access Denied",
+        text: "Invalid Admin Credentials",
+        confirmButtonColor: "#B76E79",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div style={styles.container}>
-      <h2>Admin Login</h2>
+      <div style={styles.card}>
+        <div style={styles.header}>
+          <div style={styles.iconWrapper}>
+            <ShieldCheck size={32} color="var(--primary)" />
+          </div>
+          <h2 style={{ marginBottom: "5px" }}>Admin Portal</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Secure verification required</p>
+        </div>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <input
-          type="email"
-          name="email"
-          placeholder="Admin Email"
-          onChange={handleChange}
-          required
-        />
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <div className="form-group">
+            <label className="form-label">Email Address</label>
+            <div style={styles.inputWrapper}>
+              <Mail size={18} style={styles.inputIcon} />
+              <input
+                type="email"
+                name="email"
+                placeholder="admin@primaboutique.com"
+                onChange={handleChange}
+                className="form-input"
+                style={{ paddingLeft: "45px" }}
+                required
+              />
+            </div>
+          </div>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          onChange={handleChange}
-          required
-        />
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <div style={styles.inputWrapper}>
+              <Lock size={18} style={styles.inputIcon} />
+              <input
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                onChange={handleChange}
+                className="form-input"
+                style={{ paddingLeft: "45px" }}
+                required
+              />
+            </div>
+          </div>
 
-        <button type="submit">Login</button>
-      </form>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: "100%", marginTop: "10px" }}
+            disabled={loading}
+          >
+            {loading ? "Verifying..." : "Access Dashboard"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
@@ -74,14 +107,47 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    flexDirection: "column",
-    gap: "20px"
+    backgroundColor: "var(--bg-body)",
+    backgroundImage: "radial-gradient(#e6e6e6 1px, transparent 1px)",
+    backgroundSize: "20px 20px"
+  },
+  card: {
+    backgroundColor: "var(--bg-surface)",
+    padding: "40px",
+    borderRadius: "var(--radius-card)",
+    boxShadow: "var(--shadow-lg)",
+    width: "100%",
+    maxWidth: "400px",
+    border: "1px solid var(--border)"
+  },
+  header: {
+    textAlign: "center",
+    marginBottom: "30px"
+  },
+  iconWrapper: {
+    width: "60px",
+    height: "60px",
+    borderRadius: "50%",
+    backgroundColor: "rgba(183, 110, 121, 0.1)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto 15px auto"
   },
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: "10px",
-    width: "250px"
+    gap: "15px"
+  },
+  inputWrapper: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center"
+  },
+  inputIcon: {
+    position: "absolute",
+    left: "15px",
+    color: "var(--text-muted)"
   }
 };
 

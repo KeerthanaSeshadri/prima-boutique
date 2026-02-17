@@ -14,9 +14,11 @@
     "@mediapipe/drawing_utils": "^0.3.1675466124",
     "@mediapipe/face_mesh": "^0.4.1633559619",
     "axios": "^1.13.5",
+    "lucide-react": "^0.574.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.13.0"
+    "react-router-dom": "^7.13.0",
+    "sweetalert2": "^11.26.18"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
