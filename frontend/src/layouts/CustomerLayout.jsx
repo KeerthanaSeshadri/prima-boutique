@@ -1,14 +1,16 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "../components/customer/Navbar";
+import Footer from "../components/customer/Footer";
 
 const CustomerLayout = () => {
     return (
-        <div>
+        <div className="customer-layout">
             <Navbar />
-            <div style={{ minHeight: "80vh" }}>
+            <main className="container my-section animate-fade-in" style={{ minHeight: "80vh" }}>
                 <Outlet />
-            </div>
+            </main>
+            <Footer />
         </div>
     );
 };

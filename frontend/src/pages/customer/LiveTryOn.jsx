@@ -1,5 +1,7 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { FaceMesh } from "@mediapipe/face_mesh";
+import { X, Loader } from "lucide-react";
+import Swal from "sweetalert2";
 
 const LiveTryOn = ({ onClose }) => {
   const videoRef = useRef(null);
@@ -7,6 +9,7 @@ const LiveTryOn = ({ onClose }) => {
   const streamRef = useRef(null);
   const animationRef = useRef(null);
   const faceMeshRef = useRef(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -20,19 +23,32 @@ const LiveTryOn = ({ onClose }) => {
         if (!isMounted) return;
 
         streamRef.current = stream;
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-
-        startFaceMesh();
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setLoading(false); // Camera started
+          startFaceMesh();
+        }
       } catch (err) {
         console.error("Camera error:", err);
+        setLoading(false); // Stop loading even on error
+        Swal.fire({
+          icon: "error",
+          title: "Camera Access Denied",
+          text: "Please enable camera permissions to use this feature.",
+          confirmButtonColor: "#B76E79",
+        });
+        onClose();
       }
     };
 
     const startFaceMesh = () => {
       const canvas = canvasRef.current;
+      if (!canvas) return;
+
       const ctx = canvas.getContext("2d");
 
+      // Preload earring image
       const jewelleryImage = new Image();
       jewelleryImage.src = "/earring.png";
 
@@ -51,13 +67,14 @@ const LiveTryOn = ({ onClose }) => {
       faceMeshRef.current = faceMesh;
 
       faceMesh.onResults((results) => {
+        if (!canvas) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         if (!results.multiFaceLandmarks?.length) return;
 
         const landmarks = results.multiFaceLandmarks[0];
 
-        const leftEar = landmarks[93];
+        const leftEar = landmarks[93]; // Approximate ear lobe landmark
         const rightEar = landmarks[323];
 
         const width = canvas.width;
@@ -69,6 +86,7 @@ const LiveTryOn = ({ onClose }) => {
         const rightX = rightEar.x * width;
         const rightY = rightEar.y * height;
 
+        // Calculate face width for scaling
         const faceWidth =
           Math.abs(landmarks[234].x - landmarks[454].x) * width;
 
@@ -93,12 +111,13 @@ const LiveTryOn = ({ onClose }) => {
       });
 
       const detect = async () => {
-        if (!videoRef.current) return;
+        if (!videoRef.current || !isMounted || videoRef.current.paused || videoRef.current.ended) return;
         await faceMesh.send({ image: videoRef.current });
         animationRef.current = requestAnimationFrame(detect);
       };
 
-      detect();
+      // Wait a bit for video to be ready before starting detection loop
+      setTimeout(detect, 1000);
     };
 
     startCamera();
@@ -118,23 +137,38 @@ const LiveTryOn = ({ onClose }) => {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, []);
+  }, [onClose]);
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <button style={closeBtn} onClick={onClose}>✕</button>
+    <div className="tryon-overlay animate-fade-in" onClick={onClose} style={overlayStyle}>
+      <div className="tryon-modal" onClick={(e) => e.stopPropagation()} style={modalStyle}>
 
-        <h2 style={{ color: "#B76E79", marginBottom: "20px" }}>
+        <button className="close-btn" onClick={onClose} style={closeBtn}>
+          <X size={24} color="var(--dark)" />
+        </button>
+
+        <h2 style={{
+          color: "var(--primary)",
+          marginBottom: "20px",
+          fontFamily: "var(--font-heading)"
+        }}>
           Live Bridal Try-On
         </h2>
 
-        <div style={cameraContainer}>
+        <div className="camera-container" style={cameraContainer}>
+          {loading && (
+            <div className="loader-overlay" style={loaderStyle}>
+              <Loader className="spin" size={40} color="var(--primary)" />
+              <p>Initializing Camera...</p>
+            </div>
+          )}
+
           <video
             ref={videoRef}
             width="640"
             height="480"
             style={videoStyle}
+            playsInline
           />
           <canvas
             ref={canvasRef}
@@ -144,6 +178,16 @@ const LiveTryOn = ({ onClose }) => {
           />
         </div>
       </div>
+
+      <style jsx>{`
+            .spin {
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+      `}</style>
     </div>
   );
 };
@@ -154,52 +198,80 @@ const overlayStyle = {
   left: 0,
   width: "100%",
   height: "100%",
-  background: "rgba(0,0,0,0.9)",
+  background: "rgba(0,0,0,0.85)",
+  backdropFilter: "blur(5px)",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
-  zIndex: 3000
+  zIndex: "var(--z-modal)"
 };
 
 const modalStyle = {
-  background: "#fff",
-  padding: "30px",
-  borderRadius: "16px",
+  background: "var(--bg-surface)",
+  padding: "var(--spacing-lg)",
+  borderRadius: "var(--radius-card)",
   textAlign: "center",
-  position: "relative"
+  position: "relative",
+  boxShadow: "var(--shadow-xl)",
+  maxWidth: "90%",
+  maxHeight: "90vh",
+  overflow: "hidden"
 };
 
 const closeBtn = {
   position: "absolute",
   top: "15px",
-  right: "20px",
+  right: "15px",
   background: "transparent",
   border: "none",
-  fontSize: "22px",
-  cursor: "pointer"
+  cursor: "pointer",
+  zIndex: 10
 };
 
 const cameraContainer = {
   position: "relative",
   width: "640px",
-  height: "480px"
+  height: "480px",
+  maxWidth: "100%",
+  borderRadius: "var(--radius-card)",
+  overflow: "hidden",
+  backgroundColor: "#000"
 };
 
 const videoStyle = {
   position: "absolute",
   top: 0,
   left: 0,
-  transform: "scaleX(-1)",
-  borderRadius: "12px"
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  transform: "scaleX(-1)"
 };
 
 const canvasStyle = {
   position: "absolute",
   top: 0,
   left: 0,
+  width: "100%",
+  height: "100%",
   pointerEvents: "none",
-  borderRadius: "12px",
   transform: "scaleX(-1)"
+};
+
+const loaderStyle = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  alignItems: "center",
+  background: "#f0f0f0",
+  zIndex: 5,
+  gap: "10px",
+  color: "var(--text-muted)"
 };
 
 export default LiveTryOn;
