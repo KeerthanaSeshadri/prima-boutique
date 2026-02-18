@@ -1,10 +1,11 @@
 import React, { useContext } from "react";
 import { CartContext } from "../../context/CartContext";
-import { ShoppingBag, Camera } from "lucide-react";
+import { ShoppingBag, Camera, Sparkles } from "lucide-react";
 
 const ProductCard = ({ product, onTryOn }) => {
     const { addToCart } = useContext(CartContext);
     const isOutOfStock = product.stock === 0;
+    const hasAR = product.arType && product.arType !== "None";
 
     return (
         <div className="product-card group">
@@ -21,6 +22,11 @@ const ProductCard = ({ product, onTryOn }) => {
 
                 {/* Badges */}
                 <div className="product-badges">
+                    {hasAR && (
+                        <span className="badge badge-ar" title="AR Try-On Available">
+                            <Sparkles size={12} /> AR
+                        </span>
+                    )}
                     {product.salePrice && (
                         <span className="badge badge-sale">Sale</span>
                     )}
@@ -31,19 +37,20 @@ const ProductCard = ({ product, onTryOn }) => {
 
                 {/* Overlay Actions */}
                 <div className="product-actions">
-                    {/* Try On Button */}
-                    {product.category && product.category.toLowerCase().includes("bridal") && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onTryOn(product);
-                            }}
-                            className="btn-icon-action"
-                            title="Live Try-On"
-                        >
-                            <Camera size={20} />
-                        </button>
-                    )}
+                {/* Try On Button - Only show if AR is available */}
+                {hasAR && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTryOn(product);
+                    }}
+                    className="btn-icon-action btn-ar"
+                    title={`Live Try-On (${product.arType})`}
+                  >
+                    <Camera size={20} />
+                  </button>
+                )}
+
 
                     <button
                         onClick={(e) => {
@@ -135,6 +142,21 @@ const ProductCard = ({ product, onTryOn }) => {
           color: white;
         }
 
+        .badge-ar {
+          background: linear-gradient(135deg, var(--primary), #d98aa1);
+          color: white;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.7rem;
+          animation: pulse-ar 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-ar {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.8; }
+        }
+
         .product-actions {
           position: absolute;
           bottom: 15px;
@@ -169,6 +191,16 @@ const ProductCard = ({ product, onTryOn }) => {
         .btn-icon-action:hover {
           background-color: var(--primary);
           color: white;
+        }
+
+        .btn-ar {
+          background: linear-gradient(135deg, var(--primary), #d98aa1) !important;
+          color: white !important;
+        }
+
+        .btn-ar:hover {
+          background: linear-gradient(135deg, #d98aa1, var(--primary)) !important;
+          box-shadow: var(--shadow-lg);
         }
 
         .product-info {

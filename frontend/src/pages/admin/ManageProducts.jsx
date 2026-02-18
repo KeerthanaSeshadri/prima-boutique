@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, Trash2, Image as ImageIcon, Upload } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import Swal from "sweetalert2";
 import Loader from "../../components/common/Loader";
 
@@ -12,7 +12,9 @@ const ManageProducts = () => {
         price: "",
         description: "",
         category: "All",
-        image: "",
+        image: null,
+        arType: "None",
+        arImage: null,
         stock: ""
     });
 
@@ -48,30 +50,74 @@ const ManageProducts = () => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
+    const handleImageChange = (e) => {
+        setForm({ ...form, image: e.target.files[0] });
+    };
+
+    const handleArImageChange = (e) => {
+        setForm({ ...form, arImage: e.target.files[0] });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        const formData = new FormData();
+        formData.append("name", form.name);
+        formData.append("price", form.price);
+        formData.append("description", form.description);
+        formData.append("category", form.category);
+        formData.append("stock", form.stock);
+        formData.append("image", form.image);
+        if (form.arType && form.arType !== "None") {
+            formData.append("arType", form.arType);
+        }
+        if (form.arImage) {
+            formData.append("arImage", form.arImage);
+        }
+
+        // Debug logs
+        console.log("Form submission - arType:", form.arType);
+        console.log("Form submission - arImage:", form.arImage?.name);
+
         try {
-            await axios.post("http://localhost:4000/api/products/add", form);
+            const response = await axios.post(
+                "http://localhost:4000/api/products/add",
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+
+            console.log("Product added response:", response.data);
+
             Swal.fire({
                 icon: "success",
                 title: "Success",
                 text: "Product Added Successfully",
                 confirmButtonColor: "#B76E79"
             });
+
             setForm({
                 name: "",
                 price: "",
                 description: "",
                 category: "All",
-                image: "",
+                image: null,
+                arType: "None",
+                arImage: null,
                 stock: ""
             });
+
             fetchProducts();
+
         } catch (error) {
+            console.error("Product add error:", error.response?.data || error.message);
             Swal.fire({
                 icon: "error",
                 title: "Error",
-                text: "Error adding product",
+                text: error.response?.data?.message || error.response?.data?.error || "Error adding product",
                 confirmButtonColor: "#B76E79"
             });
         }
@@ -92,17 +138,9 @@ const ManageProducts = () => {
             try {
                 await axios.delete(`http://localhost:4000/api/products/${id}`);
                 fetchProducts();
-                Swal.fire(
-                    'Deleted!',
-                    'Product has been deleted.',
-                    'success'
-                );
+                Swal.fire('Deleted!', 'Product has been deleted.', 'success');
             } catch (error) {
-                Swal.fire(
-                    'Error!',
-                    'Error deleting product',
-                    'error'
-                );
+                Swal.fire('Error!', 'Error deleting product', 'error');
             }
         }
     };
@@ -112,6 +150,7 @@ const ManageProducts = () => {
             <h2 className="page-title mb-lg">Manage Products</h2>
 
             <div className="content-grid">
+
                 {/* Add Product Form */}
                 <div className="form-card">
                     <div className="card-header border-bottom mb-md pb-sm">
@@ -119,13 +158,13 @@ const ManageProducts = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="product-form">
+
                         <div className="form-group">
                             <label className="form-label">Product Name</label>
                             <input
                                 className="form-input"
                                 type="text"
                                 name="name"
-                                placeholder="Enter product name"
                                 value={form.name}
                                 onChange={handleChange}
                                 required
@@ -133,20 +172,46 @@ const ManageProducts = () => {
                         </div>
 
                         <div className="form-group">
-                            <label className="form-label">Image Filename</label>
+                            <label className="form-label">Upload Image</label>
                             <div className="input-with-icon">
                                 <ImageIcon className="icon" size={18} />
                                 <input
                                     className="form-input indent"
-                                    type="text"
+                                    type="file"
                                     name="image"
-                                    placeholder="e.g. necklace.jpg"
-                                    value={form.image}
-                                    onChange={handleChange}
+                                    accept="image/*"
+                                    onChange={handleImageChange}
                                     required
                                 />
                             </div>
-                            <small className="text-muted">Ensure image is in uploads folder</small>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">AR Type (optional)</label>
+                            <select
+                                className="form-input"
+                                name="arType"
+                                value={form.arType}
+                                onChange={(e) => setForm({ ...form, arType: e.target.value })}
+                            >
+                                <option value="None">None</option>
+                                <option value="earring">Earring</option>
+                                <option value="chain">Chain</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Upload AR PNG (optional)</label>
+                            <div className="input-with-icon">
+                                <ImageIcon className="icon" size={18} />
+                                <input
+                                    className="form-input indent"
+                                    type="file"
+                                    name="arImage"
+                                    accept="image/png"
+                                    onChange={handleArImageChange}
+                                />
+                            </div>
                         </div>
 
                         <div className="form-group">
@@ -154,7 +219,6 @@ const ManageProducts = () => {
                             <textarea
                                 className="form-input"
                                 name="description"
-                                placeholder="Detailed description..."
                                 value={form.description}
                                 onChange={handleChange}
                                 required
@@ -169,7 +233,6 @@ const ManageProducts = () => {
                                     className="form-input"
                                     type="number"
                                     name="price"
-                                    placeholder="₹0.00"
                                     value={form.price}
                                     onChange={handleChange}
                                     required
@@ -181,7 +244,6 @@ const ManageProducts = () => {
                                     className="form-input"
                                     type="number"
                                     name="stock"
-                                    placeholder="Quantity"
                                     value={form.stock}
                                     onChange={handleChange}
                                     required
@@ -198,9 +260,7 @@ const ManageProducts = () => {
                                 onChange={handleChange}
                             >
                                 {categories.map((cat) => (
-                                    <option key={cat} value={cat}>
-                                        {cat}
-                                    </option>
+                                    <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </select>
                         </div>
@@ -227,7 +287,7 @@ const ManageProducts = () => {
                                         <img
                                             src={`http://localhost:4000/uploads/${product.image}`}
                                             alt={product.name}
-                                            onError={(e) => e.target.src = 'https://via.placeholder.com/150'}
+                                            onError={(e) => e.target.src = "https://via.placeholder.com/150"}
                                         />
                                     </div>
                                     <div className="info">
@@ -250,135 +310,97 @@ const ManageProducts = () => {
                         )}
                     </div>
                 </div>
+
             </div>
 
+            {/* ===== YOUR ORIGINAL STYLE BLOCK RESTORED ===== */}
             <style jsx>{`
-        .manage-products {
-            padding-bottom: 50px;
-        }
-
-        .content-grid {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 30px;
-        }
-
-        @media (max-width: 900px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .form-card {
-            background: white;
-            padding: 25px;
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-sm);
-            height: fit-content;
-            position: sticky;
-            top: 20px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .input-with-icon {
-            position: relative;
-        }
-
-        .icon {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            pointer-events: none;
-        }
-
-        .form-input.indent {
-            padding-left: 35px;
-        }
-
-        .product-list-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .admin-product-card {
-            background: white;
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-            position: relative;
-            transition: all 0.2s;
-        }
-
-        .admin-product-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .img-wrapper {
-            height: 140px;
-            background: var(--bg-muted);
-        }
-
-        .img-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .info {
-            padding: 15px;
-        }
-
-        .info h4 {
-            font-size: 0.95rem;
-            margin-bottom: 8px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .meta {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 15px;
-        }
-
-        .btn-trash {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(255,255,255,0.9);
-            border: none;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--danger);
-            cursor: pointer;
-            box-shadow: var(--shadow-sm);
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .admin-product-card:hover .btn-trash {
-            opacity: 1;
-        }
-
-        .btn-trash:hover {
-            background: var(--danger);
-            color: white;
-        }
-      `}</style>
+                .manage-products { padding-bottom: 50px; }
+                .content-grid { display: grid; grid-template-columns: 350px 1fr; gap: 30px; }
+                @media (max-width: 900px) {
+                    .content-grid { grid-template-columns: 1fr; }
+                }
+                .form-card {
+                    background: white;
+                    padding: 25px;
+                    border-radius: var(--radius-card);
+                    box-shadow: var(--shadow-sm);
+                    height: fit-content;
+                    position: sticky;
+                    top: 20px;
+                }
+                .form-row {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 15px;
+                }
+                .input-with-icon { position: relative; }
+                .icon {
+                    position: absolute;
+                    left: 10px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: var(--text-muted);
+                    pointer-events: none;
+                }
+                .form-input.indent { padding-left: 35px; }
+                .product-list-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                    gap: 20px;
+                }
+                .admin-product-card {
+                    background: white;
+                    border-radius: var(--radius-card);
+                    box-shadow: var(--shadow-sm);
+                    overflow: hidden;
+                    position: relative;
+                    transition: all 0.2s;
+                }
+                .admin-product-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-md);
+                }
+                .img-wrapper { height: 140px; background: var(--bg-muted); }
+                .img-wrapper img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+                .info { padding: 15px; }
+                .info h4 {
+                    font-size: 0.95rem;
+                    margin-bottom: 8px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .meta {
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    margin-bottom: 15px;
+                }
+                .btn-trash {
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: rgba(255,255,255,0.9);
+                    border: none;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--danger);
+                    cursor: pointer;
+                    box-shadow: var(--shadow-sm);
+                    opacity: 0;
+                    transition: opacity 0.2s;
+                }
+                .admin-product-card:hover .btn-trash { opacity: 1; }
+                .btn-trash:hover { background: var(--danger); color: white; }
+            `}</style>
         </div>
     );
 };

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 
-const { addProduct, getProducts } = require("../controllers/productController");
+const { addProduct, getProducts, deleteProduct } = require("../controllers/productController");
 
 // Multer config
 const storage = multer.diskStorage({
@@ -16,7 +16,12 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.post("/add", upload.single("image"), addProduct);
+// accept both main image and optional AR image
+router.post("/add", upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'arImage', maxCount: 1 }
+]), addProduct);
 router.get("/", getProducts);
+router.delete("/:id", deleteProduct);
 
 module.exports = router;

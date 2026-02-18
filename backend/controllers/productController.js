@@ -1,6 +1,4 @@
 const Product = require("../models/Product");
-
-// ADD PRODUCT
 const addProduct = async (req, res) => {
   try {
     console.log("Add Product API called");
@@ -8,9 +6,11 @@ const addProduct = async (req, res) => {
     const { name, category, description, price, salePrice, stock } = req.body;
 
     console.log("Request Body:", req.body);
-    console.log("Uploaded File:", req.file);
+    console.log("Uploaded Files:", req.files);
 
-    const imagePath = req.file ? req.file.filename : null;
+    const imagePath = req.files && req.files.image ? req.files.image[0].filename : null;
+    const arImagePath = req.files && req.files.arImage ? req.files.arImage[0].filename : null;
+    const { arType } = req.body;
 
     const newProduct = await Product.create({
       name,
@@ -20,6 +20,8 @@ const addProduct = async (req, res) => {
       salePrice,
       stock,
       image: imagePath,
+      arImage: arImagePath,
+      arType: arType || null,
     });
 
     console.log("Product Added:", newProduct.name);
@@ -31,12 +33,13 @@ const addProduct = async (req, res) => {
 
   } catch (error) {
     console.log("Add Product Error:", error.message);
-    res.status(500).json({ message: "Server Error" });
+    console.log("Full Error:", error);
+    res.status(500).json({ 
+      message: "Server Error",
+      error: error.message 
+    });
   }
 };
-
-
-// GET ALL PRODUCTS
 const getProducts = async (req, res) => {
   try {
     console.log("Get Products API called");
@@ -63,8 +66,30 @@ const getProducts = async (req, res) => {
   }
 };
 
+const deleteProduct = async (req, res) => {
+  try {
+    console.log("Delete Product API called");
+    console.log("Product ID:", req.params.id);
+
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+
+    if (!deletedProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    console.log("Product Deleted:", deletedProduct.name);
+
+    res.json({ message: "Product deleted successfully" });
+
+  } catch (error) {
+    console.log("Delete Product Error:", error.message);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 
 module.exports = {
   addProduct,
   getProducts,
+  deleteProduct, 
 };

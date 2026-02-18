@@ -3,7 +3,7 @@ import { FaceMesh } from "@mediapipe/face_mesh";
 import { X, Loader } from "lucide-react";
 import Swal from "sweetalert2";
 
-const LiveTryOn = ({ onClose }) => {
+const LiveTryOn = ({ onClose, product }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -11,32 +11,33 @@ const LiveTryOn = ({ onClose }) => {
   const faceMeshRef = useRef(null);
   const [loading, setLoading] = useState(true);
 
+  // Persistent smooth storage
+  let smoothLeft = { x: 0, y: 0, z: 0 };
+  let smoothRight = { x: 0, y: 0, z: 0 };
+  let smoothNeck = { x: 0, y: 0 };
+
   useEffect(() => {
     let isMounted = true;
 
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480 }
+          video: { width: 640, height: 480 },
         });
 
         if (!isMounted) return;
 
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          setLoading(false); // Camera started
-          startFaceMesh();
-        }
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setLoading(false);
+        startFaceMesh();
       } catch (err) {
-        console.error("Camera error:", err);
-        setLoading(false); // Stop loading even on error
+        setLoading(false);
         Swal.fire({
           icon: "error",
           title: "Camera Access Denied",
-          text: "Please enable camera permissions to use this feature.",
-          confirmButtonColor: "#B76E79",
+          text: "Please allow camera access.",
         });
         onClose();
       }
@@ -44,80 +45,153 @@ const LiveTryOn = ({ onClose }) => {
 
     const startFaceMesh = () => {
       const canvas = canvasRef.current;
-      if (!canvas) return;
-
       const ctx = canvas.getContext("2d");
 
-      // Preload earring image
       const jewelleryImage = new Image();
-      jewelleryImage.src = "/earring.png";
+      jewelleryImage.src = product?.arImage
+        ? `http://localhost:4000/uploads/${product.arImage}`
+        : product?.arType === "chain"
+        ? "/chain.png"
+        : "/earring.png";
 
       const faceMesh = new FaceMesh({
         locateFile: (file) =>
-          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
       });
 
       faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
         minDetectionConfidence: 0.7,
-        minTrackingConfidence: 0.7
+        minTrackingConfidence: 0.7,
       });
 
       faceMeshRef.current = faceMesh;
 
       faceMesh.onResults((results) => {
-        if (!canvas) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         if (!results.multiFaceLandmarks?.length) return;
 
         const landmarks = results.multiFaceLandmarks[0];
-
-        const leftEar = landmarks[93]; // Approximate ear lobe landmark
-        const rightEar = landmarks[323];
-
         const width = canvas.width;
         const height = canvas.height;
 
-        const leftX = leftEar.x * width;
-        const leftY = leftEar.y * height;
+        const ratio =
+          jewelleryImage.width / jewelleryImage.height;
 
-        const rightX = rightEar.x * width;
-        const rightY = rightEar.y * height;
+        // =========================================
+        // 💎 EARRINGS (PROPER FIT + FAST SMOOTH)
+        // =========================================
+        if (product?.arType !== "chain") {
+          const left1 = landmarks[177];
+          const left2 = landmarks[234];
 
-        // Calculate face width for scaling
-        const faceWidth =
-          Math.abs(landmarks[234].x - landmarks[454].x) * width;
+          const right1 = landmarks[401];
+          const right2 = landmarks[454];
 
-        const scale = faceWidth * 0.45;
-        const offsetY = scale * 0.4;
+          const leftCurrent = {
+            x: ((left1.x + left2.x) / 2) * width,
+            y: ((left1.y + left2.y) / 2) * height,
+            z: (left1.z + left2.z) / 2,
+          };
 
-        ctx.drawImage(
-          jewelleryImage,
-          leftX - scale / 2,
-          leftY - scale / 2 + offsetY,
-          scale,
-          scale
-        );
+          const rightCurrent = {
+            x: ((right1.x + right2.x) / 2) * width,
+            y: ((right1.y + right2.y) / 2) * height,
+            z: (right1.z + right2.z) / 2,
+          };
 
-        ctx.drawImage(
-          jewelleryImage,
-          rightX - scale / 2,
-          rightY - scale / 2 + offsetY,
-          scale,
-          scale
-        );
+          const FAST_SMOOTH = 0.7; //and me adjusting smooth based on our perspective..
+
+          const smoothFast = (prev, current) => ({
+            x: prev.x * FAST_SMOOTH + current.x * (1 - FAST_SMOOTH),
+            y: prev.y * FAST_SMOOTH + current.y * (1 - FAST_SMOOTH),
+            z:
+              prev.z !== undefined
+                ? prev.z * FAST_SMOOTH + current.z * (1 - FAST_SMOOTH)
+                : current.z,
+          });
+
+          smoothLeft = smoothFast(smoothLeft, leftCurrent);
+          smoothRight = smoothFast(smoothRight, rightCurrent);
+
+          const faceHeight =
+            Math.abs(landmarks[10].y - landmarks[152].y) *
+            height;
+
+          const baseScale = faceHeight * 0.055; //karthik : i think this fit ok!
+
+          const drawEarring = (pt) => {
+            const depthScale = 1 - pt.z * 1.2;
+            const finalWidth = baseScale * depthScale;
+            const finalHeight = finalWidth / ratio;
+
+            const drop = finalHeight * 0.15;
+
+            ctx.drawImage(
+              jewelleryImage,
+              pt.x - finalWidth / 2,
+              pt.y + drop,
+              finalWidth,
+              finalHeight
+            );
+          };
+
+          drawEarring(smoothLeft);
+          drawEarring(smoothRight);
+        }
+        else {
+          const chin = landmarks[152];
+          const leftJaw = landmarks[234];
+          const rightJaw = landmarks[454];
+
+          const jawWidth =
+            Math.abs(leftJaw.x - rightJaw.x) * width;
+
+          const neckCurrent = {
+            x: chin.x * width,
+            y: chin.y * height + 18,
+          };
+
+          const SMOOTH = 0.85;
+
+          smoothNeck = {
+            x: smoothNeck.x * SMOOTH + neckCurrent.x * (1 - SMOOTH),
+            y: smoothNeck.y * SMOOTH + neckCurrent.y * (1 - SMOOTH),
+          };
+
+          const chainWidth = jawWidth * 0.85;
+          const chainHeight = chainWidth / ratio;
+
+          const angle = Math.atan2(
+            rightJaw.y - leftJaw.y,
+            rightJaw.x - leftJaw.x
+          );
+
+          ctx.save();
+          ctx.translate(smoothNeck.x, smoothNeck.y);
+          ctx.rotate(angle);
+
+          ctx.drawImage(
+            jewelleryImage,
+            -chainWidth / 2,
+            -chainHeight / 6,
+            chainWidth,
+            chainHeight
+          );
+
+          ctx.restore();
+        }
       });
 
       const detect = async () => {
-        if (!videoRef.current || !isMounted || videoRef.current.paused || videoRef.current.ended) return;
+        if (!videoRef.current || videoRef.current.paused) return;
+
         await faceMesh.send({ image: videoRef.current });
         animationRef.current = requestAnimationFrame(detect);
       };
 
-      // Wait a bit for video to be ready before starting detection loop
-      setTimeout(detect, 1000);
+      setTimeout(detect, 400);
     };
 
     startCamera();
@@ -125,40 +199,34 @@ const LiveTryOn = ({ onClose }) => {
     return () => {
       isMounted = false;
 
-      if (animationRef.current) {
+      if (animationRef.current)
         cancelAnimationFrame(animationRef.current);
-      }
 
-      if (faceMeshRef.current) {
+      if (faceMeshRef.current)
         faceMeshRef.current.close();
-      }
 
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
+      if (streamRef.current)
+        streamRef.current
+          .getTracks()
+          .forEach((track) => track.stop());
     };
-  }, [onClose]);
+  }, [onClose, product]);
 
   return (
-    <div className="tryon-overlay animate-fade-in" onClick={onClose} style={overlayStyle}>
-      <div className="tryon-modal" onClick={(e) => e.stopPropagation()} style={modalStyle}>
-
-        <button className="close-btn" onClick={onClose} style={closeBtn}>
-          <X size={24} color="var(--dark)" />
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+        <button style={closeBtn} onClick={onClose}>
+          <X size={24} />
         </button>
 
-        <h2 style={{
-          color: "var(--primary)",
-          marginBottom: "20px",
-          fontFamily: "var(--font-heading)"
-        }}>
+        <h2 style={{ marginBottom: 20 }}>
           Live Bridal Try-On
         </h2>
 
-        <div className="camera-container" style={cameraContainer}>
+        <div style={cameraContainer}>
           {loading && (
-            <div className="loader-overlay" style={loaderStyle}>
-              <Loader className="spin" size={40} color="var(--primary)" />
+            <div style={loaderStyle}>
+              <Loader size={40} />
               <p>Initializing Camera...</p>
             </div>
           )}
@@ -170,6 +238,7 @@ const LiveTryOn = ({ onClose }) => {
             style={videoStyle}
             playsInline
           />
+
           <canvas
             ref={canvasRef}
             width="640"
@@ -178,100 +247,68 @@ const LiveTryOn = ({ onClose }) => {
           />
         </div>
       </div>
-
-      <style jsx>{`
-            .spin {
-                animation: spin 1s linear infinite;
-            }
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-      `}</style>
     </div>
   );
 };
 
 const overlayStyle = {
   position: "fixed",
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
+  inset: 0,
   background: "rgba(0,0,0,0.85)",
-  backdropFilter: "blur(5px)",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
-  zIndex: "var(--z-modal)"
+  zIndex: 1000,
 };
 
 const modalStyle = {
-  background: "var(--bg-surface)",
-  padding: "var(--spacing-lg)",
-  borderRadius: "var(--radius-card)",
-  textAlign: "center",
+  background: "#fff",
+  padding: "25px",
+  borderRadius: "16px",
   position: "relative",
-  boxShadow: "var(--shadow-xl)",
-  maxWidth: "90%",
-  maxHeight: "90vh",
-  overflow: "hidden"
 };
 
 const closeBtn = {
   position: "absolute",
-  top: "15px",
-  right: "15px",
-  background: "transparent",
+  top: 15,
+  right: 15,
+  background: "none",
   border: "none",
   cursor: "pointer",
-  zIndex: 10
 };
 
 const cameraContainer = {
   position: "relative",
   width: "640px",
   height: "480px",
-  maxWidth: "100%",
-  borderRadius: "var(--radius-card)",
+  borderRadius: "16px",
   overflow: "hidden",
-  backgroundColor: "#000"
 };
 
 const videoStyle = {
   position: "absolute",
-  top: 0,
-  left: 0,
   width: "100%",
   height: "100%",
   objectFit: "cover",
-  transform: "scaleX(-1)"
+  transform: "scaleX(-1)",
 };
 
 const canvasStyle = {
   position: "absolute",
-  top: 0,
-  left: 0,
   width: "100%",
   height: "100%",
   pointerEvents: "none",
-  transform: "scaleX(-1)"
+  transform: "scaleX(-1)",
 };
 
 const loaderStyle = {
   position: "absolute",
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
+  inset: 0,
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
   alignItems: "center",
-  background: "#f0f0f0",
-  zIndex: 5,
-  gap: "10px",
-  color: "var(--text-muted)"
+  background: "#f5f5f5",
 };
 
 export default LiveTryOn;
