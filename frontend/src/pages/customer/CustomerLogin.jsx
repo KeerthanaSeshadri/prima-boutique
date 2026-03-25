@@ -4,9 +4,11 @@ import axios from "axios";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import Swal from "sweetalert2";
 import Loader from "../../components/common/Loader";
+import { useAuth } from "../../context/AuthContext";
 
 const CustomerLogin = () => {
   const navigate = useNavigate();
+  const { saveUserSession } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     email: "",
@@ -27,8 +29,8 @@ const CustomerLogin = () => {
         form
       );
 
-      localStorage.setItem("user", JSON.stringify(res.data));
-      navigate("/products"); // Updated redirect to Products as per typical flow
+      saveUserSession(res.data);
+      navigate("/products");
     } catch (err) {
       Swal.fire({
         icon: "error",

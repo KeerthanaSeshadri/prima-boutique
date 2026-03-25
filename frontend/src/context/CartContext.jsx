@@ -1,35 +1,31 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import { getDisplayPrice } from "../utils/product";
 
 export const CartContext = createContext();
 
 const CartProvider = ({ children }) => {
-
   const [cart, setCart] = useState([]);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Load cart from localStorage
   useEffect(() => {
     const savedCart = JSON.parse(localStorage.getItem("cart"));
     if (savedCart) {
-      console.log("Loaded Cart:", savedCart);
       setCart(savedCart);
     }
   }, []);
 
-  // Save cart to localStorage
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
   const addToCart = (product) => {
-    console.log("Adding to cart:", product.name);
-
-    const existing = cart.find(item => item._id === product._id);
+    const existing = cart.find((item) => item._id === product._id);
 
     if (existing) {
       if (existing.quantity < product.stock) {
         setCart(
-          cart.map(item =>
+          cart.map((item) =>
             item._id === product._id
               ? { ...item, quantity: item.quantity + 1 }
               : item
@@ -46,15 +42,17 @@ const CartProvider = ({ children }) => {
     } else {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
+
+    setIsDrawerOpen(true);
   };
 
   const removeFromCart = (id) => {
-    setCart(cart.filter(item => item._id !== id));
+    setCart(cart.filter((item) => item._id !== id));
   };
 
   const increaseQty = (id) => {
     setCart(
-      cart.map(item =>
+      cart.map((item) =>
         item._id === id && item.quantity < item.stock
           ? { ...item, quantity: item.quantity + 1 }
           : item
@@ -64,7 +62,7 @@ const CartProvider = ({ children }) => {
 
   const decreaseQty = (id) => {
     setCart(
-      cart.map(item =>
+      cart.map((item) =>
         item._id === id && item.quantity > 1
           ? { ...item, quantity: item.quantity - 1 }
           : item
@@ -72,15 +70,27 @@ const CartProvider = ({ children }) => {
     );
   };
 
+  const subtotal = cart.reduce(
+    (acc, item) => acc + getDisplayPrice(item) * item.quantity,
+    0
+  );
+  const shippingCost = 0;
+  const total = subtotal + shippingCost;
+
   return (
     <CartContext.Provider
       value={{
         cart,
-        setCart,          // ✅ VERY IMPORTANT FIX
+        setCart,
         addToCart,
         removeFromCart,
         increaseQty,
-        decreaseQty
+        decreaseQty,
+        subtotal,
+        shippingCost,
+        total,
+        isDrawerOpen,
+        setIsDrawerOpen,
       }}
     >
       {children}
