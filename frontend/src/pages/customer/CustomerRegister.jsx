@@ -4,10 +4,12 @@ import axios from "axios";
 import { User, Mail, Lock, ArrowRight } from "lucide-react";
 import Swal from "sweetalert2";
 import Loader from "../../components/common/Loader";
+import { useAuth } from "../../context/AuthContext";
 
 
 const CustomerRegister = () => {
   const navigate = useNavigate();
+  const { saveUserSession } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -24,14 +26,15 @@ const CustomerRegister = () => {
     setLoading(true);
 
     try {
-      await axios.post("http://localhost:4000/api/auth/register", form);
+      const { data } = await axios.post("http://localhost:4000/api/auth/register", form);
+      saveUserSession(data);
       Swal.fire({
         icon: "success",
         title: "Success",
         text: "Registration Successful",
         confirmButtonColor: "#B76E79",
       });
-      navigate("/customer/login");
+      navigate("/products");
     } catch (err) {
       Swal.fire({
         icon: "error",

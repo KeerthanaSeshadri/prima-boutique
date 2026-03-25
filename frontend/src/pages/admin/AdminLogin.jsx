@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ShieldCheck, Mail, Lock } from "lucide-react";
 import Swal from "sweetalert2";
+import { useAuth } from "../../context/AuthContext";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const { saveAdminSession } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -29,7 +31,7 @@ const AdminLogin = () => {
         "http://localhost:4000/api/auth/admin-login",
         formData
       );
-      localStorage.setItem("admin", JSON.stringify(response.data));
+      saveAdminSession(response.data);
       navigate("/admin/dashboard");
     } catch (error) {
       Swal.fire({
